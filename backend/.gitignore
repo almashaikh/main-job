@@ -1,0 +1,107 @@
+# ===============================
+# Python
+# ===============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+
+# ===============================
+# Virtual Environment
+# ===============================
+venv/
+.env/
+.env.local
+.env.dev
+.env.prod
+env/
+ENV/
+
+# ===============================
+# Generated Data Files (user-specific)
+# ===============================
+jobs_*.json
+skill_analysis*.json
+gap_analysis*.json
+job_match_*.json
+skill_gap_report_*.txt
+test_jobs.json
+test_skill_analysis.json
+test_gap_analysis.json
+
+# ===============================
+# API Keys (if any separate config files)
+# ===============================
+config.py
+secrets.py
+.env
+
+# ===============================
+# Logs & Runtime
+# ===============================
+*.log
+logs/
+tmp/
+.cache/
+
+# ===============================
+# Jupyter / Data Science
+# ===============================
+.ipynb_checkpoints/
+*.h5
+*.pkl
+*.joblib
+
+# ===============================
+# OS
+# ===============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===============================
+# IDE
+# ===============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===============================
+# Documentation (optional - remove if you want to include)
+# ===============================
+API_INFO.md
+PROJECT_SUMMARY.md
+QUICKSTART.md
+VERIFICATION_STEPS.md
+HOW_IT_WORKS.md
+*.swp
+
+# ===============================
+# Frontend
+# ===============================
+node_modules/
+dist/
+build/
+
+# ===============================
+# Secrets
+# ===============================
+*.key
+*.pem
+*.crt
+secrets.json
+
+# ===============================
+# API Keys & Config
+# ===============================
+config.json
+.env.*
+

@@ -1,0 +1,36 @@
+# Core Dependencies
+requests>=2.31.0
+pandas>=2.0.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Resume Parsing
+PyPDF2>=3.0.0
+python-docx>=0.8.11
+
+# Natural Language Processing
+spacy>=3.6.0
+
+# API Development
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# AI/ML
+google-generativeai>=0.3.0
+
+# Optional but Recommended
+# For better PDF parsing
+# pdfplumber>=0.9.0
+
+# For API development (if building web version)
+# fastapi>=0.100.0
+# uvicorn>=0.23.0
+
+# For data visualization
+# matplotlib>=3.7.0
+# plotly>=5.15.0
+
+# Installation Instructions:
+# 1. Install packages: pip install -r requirements.txt
+# 2. Download spaCy model: python -m spacy download en_core_web_sm
