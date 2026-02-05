@@ -1,0 +1,30 @@
+John Doe
+Email: john@example.com
+Phone: (555) 123-4567
+LinkedIn: linkedin.com/in/johndoe
+
+PROFESSIONAL SUMMARY
+Experienced software engineer with 5+ years in full-stack development. Proficient in Python, JavaScript, and cloud technologies.
+
+EXPERIENCE
+
+Senior Software Engineer | Tech Company | 2021-Present
+- Developed RESTful APIs using Python and FastAPI, improving response time by 40%
+- Architected microservices infrastructure on AWS, reducing deployment time from hours to minutes
+- Optimized database queries, achieving 3x performance improvement
+- Led team of 5 engineers in agile environment
+
+Software Engineer | Previous Corp | 2018-2021
+- Built responsive web applications using React and JavaScript
+- Implemented CI/CD pipelines using Jenkins and Docker
+- Maintained and enhanced legacy systems, increasing stability by 25%
+
+EDUCATION
+Bachelor of Science in Computer Science | State University | 2018
+
+SKILLS
+Languages: Python, JavaScript, Java, SQL
+Web Frameworks: React, FastAPI, Django, Node.js
+Databases: PostgreSQL, MongoDB, Redis
+Cloud: AWS, Docker, Kubernetes
+Tools: Git, Jenkins, Jira, Linux

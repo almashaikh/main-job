@@ -32,7 +32,6 @@ export default function DashboardLayout({
     { name: 'Gap Analyzer', href: '/dashboard/gap-analyzer', icon: Target },
     { name: 'Learning Roadmap', href: '/dashboard/roadmap', icon: TrendingUp },
     { name: 'Job Opportunities', href: '/dashboard/job-opportunities', icon: Briefcase },
-    { name: 'AI Career Copilot', href: '/dashboard/ai-copilot', icon: MessageSquare },
   ]
 
   return (

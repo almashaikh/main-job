@@ -23,7 +23,8 @@ from resume_parser import ResumeParser
 from skill_extractor_updated import SkillExtractor
 from gap_analyzer import GapAnalyzer
 from multi_source_collector import JobCollector
-from career_copilot import CareerCopilot
+from resume_feedback_analyzer import ResumeFeedbackAnalyzer
+
 
 # Import roadmap module
 try:
@@ -59,7 +60,7 @@ resume_parser = ResumeParser()
 skill_extractor = SkillExtractor()
 gap_analyzer = GapAnalyzer()
 job_collector = JobCollector()
-career_copilot = CareerCopilot()
+feedback_analyzer = ResumeFeedbackAnalyzer()
 
 # Initialize roadmap builder if available
 roadmap_builder = None
@@ -82,6 +83,7 @@ class ResumeUploadResponse(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     experience_years: Optional[int] = None
+    raw_text: Optional[str] = None
 
 class JobDescriptionRequest(BaseModel):
     job_description: str
@@ -93,6 +95,19 @@ class GapAnalysisRequest(BaseModel):
     target_role: Optional[str] = None
     use_saved_market_data: bool = False
     market_data_file: Optional[str] = None
+
+class ResumeFeedbackRequest(BaseModel):
+    resume_text: str
+    skills: List[str]
+    target_role: Optional[str] = None
+
+class ResumeFeedbackResponse(BaseModel):
+    overall_score: int
+    skill_density_analysis: Dict
+    impact_words_analysis: Dict
+    formatting_analysis: Dict
+    relevance_analysis: Dict
+    improvement_suggestions: List[Dict]
 
 class RoadmapRequest(BaseModel):
     skill: str
@@ -106,22 +121,6 @@ class JobSearchRequest(BaseModel):
     role: str
     location: str = "India"
     page: int = 1
-
-class ChatbotMessageRequest(BaseModel):
-    message: str
-    gap_analysis: Dict
-    user_progress: Optional[Dict] = None
-    user_name: Optional[str] = None
-    is_recruiter: bool = False
-
-class ChatbotMessageResponse(BaseModel):
-    response: str
-    category: str
-    confidence: float
-    is_in_scope: bool
-
-class ChatHistoryResponse(BaseModel):
-    history: List[Dict]
 
 @app.get("/")
 async def root():
@@ -173,7 +172,8 @@ async def upload_resume(file: UploadFile = File(...)):
             name=resume_data.get('name'),
             email=resume_data.get('email'),
             phone=resume_data.get('phone'),
-            experience_years=resume_data.get('experience_years')
+            experience_years=resume_data.get('experience_years'),
+            raw_text=resume_data.get('raw_text')
         )
         
     except Exception as e:
@@ -186,6 +186,38 @@ async def upload_resume(file: UploadFile = File(...)):
             except:
                 pass
         raise HTTPException(status_code=500, detail=f"Error parsing resume: {str(e)}")
+
+@app.post("/api/resume-feedback", response_model=ResumeFeedbackResponse)
+async def analyze_resume_feedback(request: ResumeFeedbackRequest):
+    """
+    Analyze resume and provide smart feedback & improvement suggestions
+    """
+    import traceback
+    try:
+        print(f"📋 Analyzing resume for feedback...")
+        
+        # Analyze resume with target role context
+        feedback = feedback_analyzer.analyze_resume(
+            resume_text=request.resume_text,
+            skills=request.skills,
+            target_role=request.target_role
+        )
+        
+        print(f"✅ Resume feedback analysis complete. Overall score: {feedback['overall_score']}")
+        
+        return ResumeFeedbackResponse(
+            overall_score=feedback['overall_score'],
+            skill_density_analysis=feedback['skill_density_analysis'],
+            impact_words_analysis=feedback['impact_words_analysis'],
+            formatting_analysis=feedback['formatting_analysis'],
+            relevance_analysis=feedback['relevance_analysis'],
+            improvement_suggestions=feedback['improvement_suggestions']
+        )
+        
+    except Exception as e:
+        print(f"❌ ERROR analyzing resume feedback: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error analyzing resume: {str(e)}")
 
 @app.post("/api/analyze-job-description")
 async def analyze_job_description(request: JobDescriptionRequest):
@@ -752,66 +784,6 @@ async def search_jobs(request: JobSearchRequest):
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error searching jobs: {str(e)}")
-
-
-# ============================================================================
-# AI CAREER COPILOT CHATBOT ENDPOINTS
-# ============================================================================
-
-@app.post("/api/chatbot/message", response_model=ChatbotMessageResponse)
-async def chatbot_message(request: ChatbotMessageRequest):
-    """
-    Process user message with AI Career Copilot
-    Domain-specific assistant for skill gap analysis and interview readiness
-    """
-    try:
-        print(f"🤖 Chatbot message: {request.message}")
-        
-        result = career_copilot.process_message(
-            user_message=request.message,
-            gap_analysis=request.gap_analysis,
-            user_progress=request.user_progress,
-            user_name=request.user_name,
-            is_recruiter=request.is_recruiter
-        )
-        
-        return ChatbotMessageResponse(
-            response=result['response'],
-            category=result['category'],
-            confidence=result['confidence'],
-            is_in_scope=result['is_in_scope']
-        )
-    
-    except Exception as e:
-        print(f"❌ ERROR in chatbot: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"Chatbot error: {str(e)}")
-
-
-@app.get("/api/chatbot/history", response_model=ChatHistoryResponse)
-async def get_chatbot_history():
-    """Get conversation history with AI Career Copilot"""
-    try:
-        history = career_copilot.get_conversation_history()
-        return ChatHistoryResponse(history=history)
-    
-    except Exception as e:
-        print(f"❌ ERROR getting chat history: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving history: {str(e)}")
-
-
-@app.post("/api/chatbot/clear")
-async def clear_chatbot_history():
-    """Clear conversation history"""
-    try:
-        career_copilot.clear_history()
-        return {"success": True, "message": "Conversation history cleared"}
-    
-    except Exception as e:
-        print(f"❌ ERROR clearing history: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error clearing history: {str(e)}")
-
 
 if __name__ == "__main__":
     import uvicorn

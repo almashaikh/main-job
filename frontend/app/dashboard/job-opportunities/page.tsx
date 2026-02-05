@@ -244,15 +244,8 @@ export default function JobOpportunitiesPage() {
   };
 
   useEffect(() => {
-    // Load target role from gap analysis if available
-    try {
-      const savedTargetRole = localStorage.getItem('targetRole')
-      if (savedTargetRole && !searchTerm) {
-        setSearchTerm(savedTargetRole)
-      }
-    } catch (e) {
-      console.error('Failed to load target role:', e)
-    }
+    // Don't automatically search when component loads
+    // User must manually search
   }, []);
 
   const handleSearch = () => {

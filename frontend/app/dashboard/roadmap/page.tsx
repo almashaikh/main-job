@@ -72,36 +72,12 @@ export default function RoadmapPage() {
   const [isAvailable, setIsAvailable] = useState(false)
   const [expandedStages, setExpandedStages] = useState<Set<number>>(new Set())
   const [activeTab, setActiveTab] = useState<'overview' | 'prerequisites' | 'path' | 'projects'>('overview')
-  const [suggestedSkills, setSuggestedSkills] = useState<string[]>([])
 
   const API_BASE = 'http://localhost:8000'
 
   useEffect(() => {
     checkAvailability()
-    loadSuggestedSkills()
   }, [])
-
-  const loadSuggestedSkills = () => {
-    try {
-      const gapAnalysis = localStorage.getItem('gapAnalysis')
-      if (gapAnalysis) {
-        const data = JSON.parse(gapAnalysis)
-        const skills: string[] = []
-        
-        // Get critical and high priority missing skills
-        if (data.skill_gaps?.critical) {
-          skills.push(...data.skill_gaps.critical.slice(0, 3).map((s: any) => s.skill))
-        }
-        if (data.skill_gaps?.high && skills.length < 5) {
-          skills.push(...data.skill_gaps.high.slice(0, 5 - skills.length).map((s: any) => s.skill))
-        }
-        
-        setSuggestedSkills(skills)
-      }
-    } catch (e) {
-      console.error('Failed to load suggested skills:', e)
-    }
-  }
 
   const checkAvailability = async () => {
     try {
@@ -230,29 +206,6 @@ export default function RoadmapPage() {
             Generate personalized learning paths with AI-powered recommendations
           </p>
         </div>
-
-        {/* Suggested Skills from Gap Analysis */}
-        {suggestedSkills.length > 0 && !roadmap && (
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <Lightbulb className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="text-blue-400 font-medium mb-2">Suggested Skills from Your Gap Analysis</h3>
-                <div className="flex flex-wrap gap-2">
-                  {suggestedSkills.map((suggestedSkill) => (
-                    <button
-                      key={suggestedSkill}
-                      onClick={() => setSkill(suggestedSkill)}
-                      className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg text-blue-300 text-sm transition-colors"
-                    >
-                      {suggestedSkill}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Input Section */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 p-6 mb-6">

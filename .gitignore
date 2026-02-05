@@ -1,39 +1,3 @@
-<<<<<<< HEAD
-# Dependencies
-node_modules/
-/.pnp
-.pnp.js
-
-# Testing
-/coverage
-
-# Next.js
-/.next/
-/out/
-
-# Production
-/build
-
-# Misc
-.DS_Store
-*.pem
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Local env files
-.env*.local
-.env
-
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-=======
 # Python
 __pycache__/
 *.py[cod]
@@ -83,4 +47,3 @@ jobs_*.json
 skill_analysis*.json
 gap_analysis*.json
 roadmap_cache/
->>>>>>> b3b97f7d3a6af7c461875af4286500ea08d68b97

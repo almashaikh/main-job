@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Upload, FileText, Search, Target, TrendingUp, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Upload, FileText, Search, Target, TrendingUp, AlertCircle, CheckCircle2, XCircle, Loader2, Star, Lightbulb, AlertTriangle } from 'lucide-react'
 
 interface ResumeData {
   skills: string[]
@@ -9,6 +9,50 @@ interface ResumeData {
   email?: string
   phone?: string
   experience_years?: number
+  raw_text?: string
+}
+
+interface ResumeFeedback {
+  overall_score: number
+  skill_density_analysis: {
+    score: number
+    status: string
+    density_percentage: number
+    unique_skills: number
+    details: string
+    top_skills: string[]
+  }
+  impact_words_analysis: {
+    score: number
+    status: string
+    found_words: Record<string, string[]>
+    missing_words: Record<string, string[]>
+    priority_missing: string[]
+    total_impact_words_found: number
+    categories_with_words: number
+  }
+  formatting_analysis: {
+    score: number
+    status: string
+    issues: string[]
+    word_count: number
+    contact_info_found: Record<string, boolean>
+    details: string
+    bullet_points: number
+    sections_found: number
+  }
+  relevance_analysis: {
+    score: number
+    status: string
+    matched_skills: number
+    missing_critical_skills: string[]
+  }
+  improvement_suggestions: Array<{
+    category: string
+    priority: string
+    suggestion: string
+    impact: string
+  }>
 }
 
 interface GapAnalysisResult {
@@ -48,10 +92,14 @@ interface JobMatchResult {
 }
 
 export default function GapAnalyzer() {
+  const STORAGE_KEY = 'gapAnalyzerState'
+  const resumeInputRef = useRef<HTMLInputElement | null>(null)
+  const jobDescInputRef = useRef<HTMLInputElement | null>(null)
   const [analysisMethod, setAnalysisMethod] = useState<'job-description' | 'market-data'>('market-data')
   const [jobDescInputMethod, setJobDescInputMethod] = useState<'text' | 'pdf'>('text')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
+  const [resumeFeedback, setResumeFeedback] = useState<ResumeFeedback | null>(null)
   const [jobDescription, setJobDescription] = useState('')
   const [jobDescFile, setJobDescFile] = useState<File | null>(null)
   const [targetRole, setTargetRole] = useState('')
@@ -61,32 +109,66 @@ export default function GapAnalyzer() {
 
   const API_BASE = 'http://localhost:8000'
 
-  // Load persisted data on mount
+  const handleReset = () => {
+    setAnalysisMethod('market-data')
+    setJobDescInputMethod('text')
+    setResumeFile(null)
+    setResumeData(null)
+    setResumeFeedback(null)
+    setJobDescription('')
+    setJobDescFile(null)
+    setTargetRole('')
+    setGapAnalysis(null)
+    setError('')
+    setLoading(false)
+
+    if (resumeInputRef.current) resumeInputRef.current.value = ''
+    if (jobDescInputRef.current) jobDescInputRef.current.value = ''
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(STORAGE_KEY)
+      } catch (storageErr) {
+        console.warn('Failed to clear saved gap analyzer state', storageErr)
+      }
+    }
+  }
+
   useEffect(() => {
-    const savedResumeData = localStorage.getItem('resumeData')
-    const savedGapAnalysis = localStorage.getItem('gapAnalysis')
-    const savedTargetRole = localStorage.getItem('targetRole')
-    
-    if (savedResumeData) {
-      try {
-        setResumeData(JSON.parse(savedResumeData))
-      } catch (e) {
-        console.error('Failed to load resume data:', e)
-      }
-    }
-    
-    if (savedGapAnalysis) {
-      try {
-        setGapAnalysis(JSON.parse(savedGapAnalysis))
-      } catch (e) {
-        console.error('Failed to load gap analysis:', e)
-      }
-    }
-    
-    if (savedTargetRole) {
-      setTargetRole(savedTargetRole)
+    if (typeof window === 'undefined') return
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (!stored) return
+      const parsed = JSON.parse(stored)
+      if (parsed.analysisMethod) setAnalysisMethod(parsed.analysisMethod)
+      if (parsed.jobDescInputMethod) setJobDescInputMethod(parsed.jobDescInputMethod)
+      if (typeof parsed.jobDescription === 'string') setJobDescription(parsed.jobDescription)
+      if (typeof parsed.targetRole === 'string') setTargetRole(parsed.targetRole)
+      if (parsed.resumeData) setResumeData(parsed.resumeData)
+      if (parsed.resumeFeedback) setResumeFeedback(parsed.resumeFeedback)
+      if (parsed.gapAnalysis) setGapAnalysis(parsed.gapAnalysis)
+    } catch (storageErr) {
+      console.warn('Failed to restore gap analyzer state', storageErr)
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const payload = {
+        analysisMethod,
+        jobDescInputMethod,
+        jobDescription,
+        targetRole,
+        resumeData,
+        resumeFeedback,
+        gapAnalysis,
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch (storageErr) {
+      console.warn('Failed to persist gap analyzer state', storageErr)
+    }
+  }, [analysisMethod, jobDescInputMethod, jobDescription, targetRole, resumeData, resumeFeedback, gapAnalysis])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -136,10 +218,29 @@ export default function GapAnalyzer() {
 
       const data = await response.json()
       setResumeData(data)
-      // Persist to localStorage
-      localStorage.setItem('resumeData', JSON.stringify(data))
-      if (data.name) {
-        localStorage.setItem('userName', data.name)
+
+      // Fetch resume feedback
+      if (data.skills && data.skills.length > 0 && data.raw_text) {
+        try {
+          const feedbackResponse = await fetch(`${API_BASE}/api/resume-feedback`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              resume_text: data.raw_text,
+              skills: data.skills,
+              target_role: targetRole || undefined,
+            }),
+          })
+
+          if (feedbackResponse.ok) {
+            const feedbackData = await feedbackResponse.json()
+            setResumeFeedback(feedbackData)
+          }
+        } catch (feedbackErr) {
+          console.log('Note: Resume feedback analysis skipped')
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error uploading resume')
@@ -204,23 +305,11 @@ export default function GapAnalyzer() {
       }
 
       if (!response.ok) {
-        let errorMessage = 'Failed to perform gap analysis'
-        try {
-          const errorData = await response.json()
-          if (errorData?.detail) {
-            errorMessage = errorData.detail
-          }
-        } catch {
-          // Ignore JSON parse errors and keep default message
-        }
-        throw new Error(errorMessage)
+        throw new Error('Failed to perform gap analysis')
       }
 
       const data = await response.json()
       setGapAnalysis(data)
-      // Persist to localStorage
-      localStorage.setItem('gapAnalysis', JSON.stringify(data))
-      localStorage.setItem('targetRole', targetRole)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error performing gap analysis')
     } finally {
@@ -269,14 +358,6 @@ export default function GapAnalyzer() {
         <p className="text-gray-400 text-lg">Upload your resume and select your target job role to get a comprehensive skill gap analysis with personalized recommendations.</p>
       </div>
 
-      {/* Data Persistence Info */}
-      {(resumeData || gapAnalysis) && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex items-center gap-2 text-sm text-blue-300">
-          <CheckCircle2 className="w-4 h-4" />
-          <span>Your analysis data is saved and will persist across pages</span>
-        </div>
-      )}
-
       {/* Error Display */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
@@ -300,6 +381,7 @@ export default function GapAnalyzer() {
             </div>
             <input
               type="file"
+              ref={resumeInputRef}
               onChange={handleFileChange}
               accept=".pdf,.docx"
               className="hidden"
@@ -322,6 +404,13 @@ export default function GapAnalyzer() {
                 Parse Resume
               </>
             )}
+          </button>
+
+          <button
+            onClick={handleReset}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            Reset All Data
           </button>
         </div>
       </div>
@@ -349,12 +438,6 @@ export default function GapAnalyzer() {
                   <p className="text-white">{resumeData.email}</p>
                 </div>
               )}
-              {resumeData.experience_years !== undefined && (
-                <div>
-                  <p className="text-gray-400 text-sm">Experience</p>
-                  <p className="text-white">{resumeData.experience_years} years</p>
-                </div>
-              )}
             </div>
 
             <div>
@@ -371,6 +454,196 @@ export default function GapAnalyzer() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Smart Resume Feedback & Improvement Suggestions */}
+      {resumeFeedback && (
+        <div className="bg-white/5 rounded-lg p-6 border border-slate-700 space-y-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Lightbulb className="w-6 h-6 text-yellow-400" />
+              Smart Resume Feedback
+            </h2>
+            <div className="text-right">
+              <p className="text-gray-400 text-sm">Overall Resume Quality</p>
+              <p className={`text-3xl font-bold ${
+                resumeFeedback.overall_score >= 80 ? 'text-green-400' :
+                resumeFeedback.overall_score >= 60 ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {resumeFeedback.overall_score}/100
+              </p>
+            </div>
+          </div>
+
+          {/* Skill Density Analysis */}
+          <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <Target className="w-5 h-5 text-blue-400" />
+                Skill Density & Integration
+              </h3>
+              <span className={`text-lg font-bold ${
+                resumeFeedback.skill_density_analysis.score >= 80 ? 'text-green-400' :
+                resumeFeedback.skill_density_analysis.score >= 60 ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {resumeFeedback.skill_density_analysis.score}/100
+              </span>
+            </div>
+            <p className="text-gray-300 text-sm mb-3">{resumeFeedback.skill_density_analysis.status}</p>
+            <div className="space-y-2 text-gray-400 text-sm">
+              <p>• Skill Density: {resumeFeedback.skill_density_analysis.density_percentage}% of your resume content</p>
+              <p>• Total Unique Skills: {resumeFeedback.skill_density_analysis.unique_skills}</p>
+              {resumeFeedback.skill_density_analysis.top_skills.length > 0 && (
+                <p>• Top Skills: {resumeFeedback.skill_density_analysis.top_skills.join(', ')}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Impact Words Analysis */}
+          <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-purple-400" />
+                Action & Impact Words
+              </h3>
+              <span className={`text-lg font-bold ${
+                resumeFeedback.impact_words_analysis.score >= 80 ? 'text-green-400' :
+                resumeFeedback.impact_words_analysis.score >= 60 ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {resumeFeedback.impact_words_analysis.score}/100
+              </span>
+            </div>
+            <p className="text-gray-300 text-sm mb-3">{resumeFeedback.impact_words_analysis.status}</p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-gray-400 text-sm mb-2">✓ Strong Impact Words Found:</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(resumeFeedback.impact_words_analysis.found_words)
+                    .filter(([_, words]) => words.length > 0)
+                    .flatMap(([_, words]) => words)
+                    .slice(0, 8)
+                    .map((word, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-green-500/10 border border-green-500/30 rounded text-green-400 text-xs">
+                        {word}
+                      </span>
+                    ))}
+                </div>
+              </div>
+              {resumeFeedback.impact_words_analysis.priority_missing.length > 0 && (
+                <div>
+                  <p className="text-gray-400 text-sm mb-2">✗ Missing Powerful Words:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {resumeFeedback.impact_words_analysis.priority_missing.slice(0, 6).map((word, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-orange-500/10 border border-orange-500/30 rounded text-orange-400 text-xs">
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Formatting Analysis */}
+          <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-cyan-400" />
+                Resume Formatting & Structure
+              </h3>
+              <span className={`text-lg font-bold ${
+                resumeFeedback.formatting_analysis.score >= 80 ? 'text-green-400' :
+                resumeFeedback.formatting_analysis.score >= 60 ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {resumeFeedback.formatting_analysis.score}/100
+              </span>
+            </div>
+            <p className="text-gray-300 text-sm mb-3">{resumeFeedback.formatting_analysis.status}</p>
+            <div className="space-y-2 text-gray-400 text-sm">
+              <p>• Word Count: {resumeFeedback.formatting_analysis.word_count}</p>
+              <p>• Contact Info: 
+                {resumeFeedback.formatting_analysis.contact_info_found.email && ' ✓ Email'} 
+                {resumeFeedback.formatting_analysis.contact_info_found.phone && ' ✓ Phone'} 
+                {resumeFeedback.formatting_analysis.contact_info_found.linkedin && ' ✓ LinkedIn'}
+              </p>
+              {resumeFeedback.formatting_analysis.issues.length > 0 && (
+                <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded">
+                  <p className="text-red-400 text-xs mb-1">⚠️ Issues Found:</p>
+                  {resumeFeedback.formatting_analysis.issues.map((issue, idx) => (
+                    <p key={idx} className="text-red-300 text-xs">• {issue}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Relevance Analysis (if target role provided) */}
+          {resumeFeedback.relevance_analysis.score > 0 && (
+            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="text-white font-semibold flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-400" />
+                  Relevance to Target Role
+                </h3>
+                <span className={`text-lg font-bold ${
+                  resumeFeedback.relevance_analysis.score >= 80 ? 'text-green-400' :
+                  resumeFeedback.relevance_analysis.score >= 60 ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>
+                  {resumeFeedback.relevance_analysis.score}/100
+                </span>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">{resumeFeedback.relevance_analysis.status}</p>
+              <p className="text-gray-400 text-sm mb-2">Matched: {resumeFeedback.relevance_analysis.matched_skills} skills</p>
+              {resumeFeedback.relevance_analysis.missing_critical_skills.length > 0 && (
+                <div>
+                  <p className="text-gray-400 text-sm mb-2">Missing Critical Skills:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {resumeFeedback.relevance_analysis.missing_critical_skills.map((skill, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-xs">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Improvement Suggestions */}
+          {resumeFeedback.improvement_suggestions.length > 0 && (
+            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-slate-600">
+              <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                Personalized Improvement Suggestions
+              </h3>
+              <div className="space-y-3">
+                {resumeFeedback.improvement_suggestions.map((suggestion, idx) => (
+                  <div key={idx} className="bg-slate-800/50 rounded p-3 border-l-4 border-l-yellow-500">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="text-white font-semibold text-sm">{suggestion.category}</p>
+                        <p className={`text-xs font-medium ${
+                          suggestion.priority === 'High' ? 'text-red-400' :
+                          suggestion.priority === 'Medium' ? 'text-yellow-400' :
+                          'text-blue-400'
+                        }`}>
+                          Priority: {suggestion.priority}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-gray-300 text-sm mb-2">💡 {suggestion.suggestion}</p>
+                    <p className="text-gray-400 text-xs italic">Impact: {suggestion.impact}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -489,6 +762,7 @@ export default function GapAnalyzer() {
                       </div>
                       <input
                         type="file"
+                        ref={jobDescInputRef}
                         onChange={handleJobDescFileChange}
                         accept=".pdf"
                         className="hidden"
@@ -637,25 +911,7 @@ export default function GapAnalyzer() {
                 </div>
               )}
 
-              {/* Recommendations */}
-              {gapAnalysis.recommendations && gapAnalysis.recommendations.length > 0 && (
-                <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
-                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-blue-400" />
-                    Recommendations
-                  </h3>
-                  <ul className="space-y-3">
-                    {gapAnalysis.recommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start gap-3 text-gray-300">
-                        <span className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-sm flex-shrink-0 mt-0.5">
-                          {index + 1}
-                        </span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+
             </div>
           )}
     </div>
