@@ -951,7 +951,6 @@ export default function GapAnalyzer() {
                                 animation: `slideInRight 0.5s ease-out ${index * 0.05}s both`
                               }}
                             >
-                            >
                               <div className="flex items-start justify-between">
                                 <span className="font-medium">{skill.skill}</span>
                                 <span className="text-sm">
