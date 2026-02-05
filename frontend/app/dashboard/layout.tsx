@@ -52,9 +52,9 @@ export default function DashboardLayout({
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
-            <Link href="/" className="flex items-center space-x-2">
-              <Sparkles className="w-6 h-6 text-blue-500" />
-              <span className="text-xl font-bold text-white">SkillSphere</span>
+            <Link href="/" className="flex items-center space-x-2 group cursor-pointer">
+              <Sparkles className="w-6 h-6 text-blue-500 transition-smooth group-hover:animate-bounce-soft" />
+              <span className="text-xl font-bold text-white transition-smooth group-hover:text-blue-400">SkillSphere</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -76,14 +76,15 @@ export default function DashboardLayout({
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={`
-                      flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors group
+                      flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-smooth group relative overflow-hidden
                       ${isActive 
-                        ? 'bg-blue-600 text-white' 
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/50' 
+                        : 'text-gray-400 hover:bg-gray-800/80 hover:text-white'
                       }
                     `}
                   >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-10 translate-x-[-100%] group-hover:translate-x-[100%] transition-all duration-500"></div>
+                    <Icon className={`w-5 h-5 flex-shrink-0 transition-smooth ${isActive ? 'group-hover:scale-110' : 'group-hover:scale-120'}`} />
                     <span className="text-sm font-medium">{item.name}</span>
                   </Link>
                 )
@@ -94,7 +95,7 @@ export default function DashboardLayout({
           {/* User Profile */}
           <div className="p-4 border-t border-gray-800">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold transition-smooth hover-scale hover-glow cursor-pointer">
                 JD
               </div>
               <div className="flex-1 min-w-0">
@@ -103,15 +104,15 @@ export default function DashboardLayout({
               </div>
             </div>
             <div className="flex space-x-2">
-              <button className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-300 transition">
-                <Settings className="w-4 h-4" />
+              <button className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-300 transition-smooth hover-lift group">
+                <Settings className="w-4 h-4 transition-smooth group-hover:rotate-90" />
                 <span>Settings</span>
               </button>
               <Link 
                 href="/login"
-                className="flex items-center justify-center px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 transition"
+                className="flex items-center justify-center px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 transition-smooth hover-lift group"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 transition-smooth group-hover:scale-110" />
               </Link>
             </div>
           </div>
@@ -134,9 +135,9 @@ export default function DashboardLayout({
 
             {/* Right Section */}
             <div className="flex items-center space-x-4">
-              <button className="relative p-2 text-gray-400 hover:text-white transition">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+              <button className="relative p-2 text-gray-400 hover:text-white transition-smooth group">
+                <Bell className="w-5 h-5 transition-smooth group-hover:animate-bounce-soft" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
               </button>
             </div>
           </div>

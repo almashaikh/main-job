@@ -95,6 +95,7 @@ export default function GapAnalyzer() {
   const STORAGE_KEY = 'gapAnalyzerState'
   const resumeInputRef = useRef<HTMLInputElement | null>(null)
   const jobDescInputRef = useRef<HTMLInputElement | null>(null)
+  const uploadContainerRef = useRef<HTMLDivElement | null>(null)
   const [analysisMethod, setAnalysisMethod] = useState<'job-description' | 'market-data'>('market-data')
   const [jobDescInputMethod, setJobDescInputMethod] = useState<'text' | 'pdf'>('text')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
@@ -106,8 +107,18 @@ export default function GapAnalyzer() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [gapAnalysis, setGapAnalysis] = useState<GapAnalysisResult | null>(null)
+  const [particles, setParticles] = useState<Array<{ id: string; type: string }>>([])
 
   const API_BASE = 'http://localhost:8000'
+
+  const createParticles = (count: number = 8) => {
+    const newParticles = Array.from({ length: count }, (_, i) => ({
+      id: `particle-${Date.now()}-${i}`,
+      type: i % 3 === 0 ? 'left' : i % 3 === 1 ? 'right' : 'center'
+    }))
+    setParticles(newParticles)
+    setTimeout(() => setParticles([]), 2000)
+  }
 
   const handleReset = () => {
     setAnalysisMethod('market-data')
@@ -202,6 +213,7 @@ export default function GapAnalyzer() {
 
     setLoading(true)
     setError('')
+    createParticles(12)
 
     try {
       const formData = new FormData()
@@ -353,31 +365,64 @@ export default function GapAnalyzer() {
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 animate-slide-down">
         <h1 className="text-4xl font-bold text-white mb-3">Analyze Your Skills</h1>
         <p className="text-gray-400 text-lg">Upload your resume and select your target job role to get a comprehensive skill gap analysis with personalized recommendations.</p>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3 animate-slide-down">
           <AlertCircle className="w-5 h-5 text-red-400" />
           <p className="text-red-400">{error}</p>
         </div>
       )}
 
       {/* Resume Upload Section */}
-      <div className="bg-white/5 rounded-lg p-8 border border-slate-700">
-       
+      <div ref={uploadContainerRef} className="bg-white/5 rounded-lg p-8 border border-slate-700 animate-slide-up card-hover relative overflow-hidden">
+        {/* Particle effects container */}
+        <div className="absolute inset-0 pointer-events-none">
+          {particles.map((particle) => (
+            <div
+              key={particle.id}
+              className={`absolute w-2 h-2 bg-blue-400 rounded-full ${
+                particle.type === 'left' ? 'particle-float-left' :
+                particle.type === 'right' ? 'particle-float-right' :
+                'particle-float'
+              }`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                opacity: 0.6,
+              }}
+            />
+          ))}
+        </div>
         
-        <div className="space-y-4">
+        <div className="space-y-4 relative z-10">
           <label className="block">
-            <div className="border-2 border-dashed border-gray-600 bg-gray-800/30 rounded-lg p-12 text-center hover:border-gray-500 hover:bg-gray-800/50 transition-all cursor-pointer">
-              <Upload className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <p className="text-white text-lg mb-2">
-                {resumeFile ? resumeFile.name : 'Drop your resume here, or click to browse'}
-              </p>
-              <p className="text-gray-400 text-sm">Supports PDF and DOCX files up to 10MB</p>
+            <div className={`border-2 border-dashed ${resumeFile ? 'border-blue-500 bg-blue-900/20' : 'border-gray-600 bg-gray-800/30'} rounded-lg p-12 text-center transition-smooth cursor-pointer group ${loading ? 'smooth-pulse' : 'hover:border-gray-500 hover:bg-gray-800/50'}`}>
+              {loading ? (
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-12 h-12 calm-spin text-blue-400" />
+                  <p className="text-blue-400 font-medium">Analyzing your resume...</p>
+                  <div className="w-full max-w-xs h-1 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 upload-progress"></div>
+                  </div>
+                </div>
+              ) : resumeFile ? (
+                <>
+                  <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-blue-400 file-appear" />
+                  <p className="text-white text-lg mb-2 file-appear">{resumeFile.name}</p>
+                  <p className="text-gray-400 text-sm">Ready to parse</p>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-16 h-16 mx-auto mb-4 text-gray-400 transition-smooth group-hover:scale-110 group-hover:text-blue-400" />
+                  <p className="text-white text-lg mb-2">Drop your resume here, or click to browse</p>
+                  <p className="text-gray-400 text-sm">Supports PDF and DOCX files up to 10MB</p>
+                </>
+              )}
             </div>
             <input
               type="file"
@@ -385,22 +430,24 @@ export default function GapAnalyzer() {
               onChange={handleFileChange}
               accept=".pdf,.docx"
               className="hidden"
+              disabled={loading}
             />
           </label>
 
+          {/* Upload button with enhanced animation */}
           <button
             onClick={handleUploadResume}
             disabled={!resumeFile || loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            className={`w-full ${loading ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'} disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-smooth hover-lift flex items-center justify-center gap-2 group ${loading ? 'smooth-pulse' : ''}`}
           >
             {loading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 calm-spin" />
                 Parsing Resume...
               </>
             ) : (
               <>
-                <FileText className="w-5 h-5" />
+                <FileText className="w-5 h-5 transition-smooth group-hover:scale-110" />
                 Parse Resume
               </>
             )}
@@ -408,7 +455,7 @@ export default function GapAnalyzer() {
 
           <button
             onClick={handleReset}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-medium transition-smooth hover-lift"
           >
             Reset All Data
           </button>
@@ -417,9 +464,9 @@ export default function GapAnalyzer() {
 
       {/* Parsed Resume Data */}
       {resumeData && (
-        <div className="bg-white/5 rounded-lg p-6 border border-slate-700">
+        <div className="bg-white/5 rounded-lg p-6 border border-slate-700 animate-slide-up card-hover">
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-green-400" />
+            <CheckCircle2 className="w-6 h-6 text-green-400 success-check" />
             Resume Parsed Successfully
           </h2>
           
@@ -446,7 +493,10 @@ export default function GapAnalyzer() {
                 {resumeData.skills.map((skill, index) => (
                   <span
                     key={index}
-                    className="px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-sm"
+                    className="px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-sm transition-smooth hover-lift hover-scale hover-glow"
+                    style={{
+                      animation: `slideInRight 0.5s ease-out ${index * 0.05}s both`
+                    }}
                   >
                     {skill}
                   </span>
@@ -815,56 +865,52 @@ export default function GapAnalyzer() {
 
           {/* Gap Analysis Results */}
           {gapAnalysis && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-slide-up">
               {/* Overview Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gradient-to-br from-blue-600/20 to-blue-900/20 rounded-lg p-6 border border-blue-500/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400">Match Score</span>
-                    <TrendingUp className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <div className="text-3xl font-bold text-white">
-                    {typeof gapAnalysis.match_percentage === 'number' ? gapAnalysis.match_percentage.toFixed(1) : '0.0'}%
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-purple-600/20 to-purple-900/20 rounded-lg p-6 border border-purple-500/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400">Readiness Score</span>
-                    <Target className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div className="text-3xl font-bold text-white">
-                    {typeof gapAnalysis.readiness_score === 'number' ? gapAnalysis.readiness_score.toFixed(1) : gapAnalysis.readiness_score || 'N/A'}
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-green-600/20 to-green-900/20 rounded-lg p-6 border border-green-500/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400">Status</span>
-                    <CheckCircle2 className="w-5 h-5 text-green-400" />
-                  </div>
-                  <div className={`text-2xl font-bold ${getReadinessColor(gapAnalysis.overall_readiness)}`}>
-                    {gapAnalysis.overall_readiness || 'N/A'}
-                  </div>
-                </div>
+                {[
+                  { label: 'Match Score', value: `${(typeof gapAnalysis.match_percentage === 'number' ? gapAnalysis.match_percentage : 0).toFixed(1)}%`, icon: TrendingUp, bgFrom: 'from-blue-600/20', bgTo: 'to-blue-900/20', borderColor: 'border-blue-500/30', iconColor: 'text-blue-400' },
+                  { label: 'Readiness Score', value: `${(typeof gapAnalysis.readiness_score === 'number' ? gapAnalysis.readiness_score : 0).toFixed(1)}`, icon: Target, bgFrom: 'from-purple-600/20', bgTo: 'to-purple-900/20', borderColor: 'border-purple-500/30', iconColor: 'text-purple-400' },
+                  { label: 'Status', value: gapAnalysis.overall_readiness || 'N/A', icon: CheckCircle2, bgFrom: 'from-green-600/20', bgTo: 'to-green-900/20', borderColor: 'border-green-500/30', iconColor: 'text-green-400' }
+                ].map((card, idx) => {
+                  const Icon = card.icon
+                  return (
+                    <div 
+                      key={idx}
+                      className={`bg-gradient-to-br ${card.bgFrom} ${card.bgTo} rounded-lg p-6 border ${card.borderColor} card-hover animate-scale-in`}
+                      style={{ animationDelay: `${idx * 0.1}s` }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-400">{card.label}</span>
+                        <Icon className={`w-5 h-5 ${card.iconColor} transition-smooth`} />
+                      </div>
+                      <div className="text-3xl font-bold text-white transition-smooth">
+                        {card.value}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Matched Skills */}
               {gapAnalysis.matched_skills_detailed && gapAnalysis.matched_skills_detailed.length > 0 && (
-                <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700 animate-slide-up card-hover">
                   <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    <CheckCircle2 className="w-5 h-5 text-green-400 animate-bounce-soft" />
                     Matched Skills ({gapAnalysis.matched_skills_detailed.length})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {gapAnalysis.matched_skills_detailed.filter(skill => skill && skill.skill).map((skill, index) => (
                       <div
                         key={index}
-                        className="bg-green-500/10 border border-green-500/20 rounded-lg p-3"
+                        className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 transition-smooth hover-lift hover-color-shift card-hover"
+                        style={{
+                          animation: `slideInLeft 0.5s ease-out ${index * 0.05}s both`
+                        }}
                       >
                         <div className="flex items-start justify-between">
                           <span className="text-white font-medium">{skill.skill}</span>
-                          <span className="text-green-400 text-sm">
+                          <span className="text-green-400 text-sm font-semibold">
                             {skill.percentage ? `${skill.percentage.toFixed(0)}%` : ''}
                           </span>
                         </div>
@@ -880,21 +926,31 @@ export default function GapAnalyzer() {
               {/* Skill Gaps by Priority */}
               {gapAnalysis.skill_gaps && (
                 <div className="space-y-4">
-                  {['critical', 'high', 'medium', 'low'].map((priority) => {
+                  {['critical', 'high', 'medium', 'low'].map((priority, priorityIdx) => {
                     const gaps = gapAnalysis.skill_gaps[priority as keyof typeof gapAnalysis.skill_gaps]
                     if (!gaps || gaps.length === 0) return null
 
                     return (
-                      <div key={priority} className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                      <div 
+                        key={priority} 
+                        className="bg-slate-800/50 rounded-lg p-6 border border-slate-700 animate-slide-up card-hover"
+                        style={{
+                          animation: `slideInUp 0.5s ease-out ${priorityIdx * 0.1}s both`
+                        }}
+                      >
                         <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 capitalize ${getPriorityColor(priority)}`}>
-                          <AlertCircle className="w-5 h-5" />
+                          <AlertCircle className="w-5 h-5 animate-pulse-slow" />
                           {priority} Priority Gaps ({gaps.length})
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {gaps.filter(skill => skill && skill.skill).map((skill, index) => (
                             <div
                               key={index}
-                              className={`border rounded-lg p-3 ${getPriorityColor(priority)}`}
+                              className={`border rounded-lg p-3 transition-smooth hover-lift ${getPriorityColor(priority)}`}
+                              style={{
+                                animation: `slideInRight 0.5s ease-out ${index * 0.05}s both`
+                              }}
+                            >
                             >
                               <div className="flex items-start justify-between">
                                 <span className="font-medium">{skill.skill}</span>
